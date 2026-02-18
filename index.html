@@ -3,177 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Codenames Pro Edition</title>
+    <title>Codenames Pro | النسخة الشاملة</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
-        :root { --blue-team: #5da9dd; --red-team: #e2584d; --bg: #2c3e50; --card-beige: #f4e7d3; }
-        body { background: var(--bg); font-family: 'Tajawal', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; color: white; }
+        :root { --blue: #2980b9; --red: #c0392b; --bg: #34495e; --card: #f3e5ab; --gold: #f1c40f; }
         
-        /* الجانب الأيمن - المعلومات */
-        .sidebar { width: 300px; background: rgba(0,0,0,0.3); display: flex; flex-direction: column; padding: 15px; border-left: 2px solid rgba(255,255,255,0.1); }
-        .score-card { border-radius: 12px; padding: 15px; margin-bottom: 10px; position: relative; }
-        .blue-box { background: #2980b9; border: 3px solid var(--blue-team); }
-        .red-box { background: #c0392b; border: 3px solid var(--red-team); }
-        .score-val { font-size: 45px; font-weight: 800; float: left; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        /* لوحة اللعب */
-        .main-content { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-y: auto; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; width: 100%; max-width: 900px; }
-        
-        .word-card { background: var(--card-beige); border-radius: 10px; height: 110px; display: flex; align-items: center; justify-content: center; text-align: center; color: #2c3e50; font-weight: 800; font-size: 19px; cursor: pointer; position: relative; box-shadow: 0 5px 0 #bdc3c7; transition: 0.1s; border: 3px solid transparent; }
-        .word-card:active { transform: translateY(3px); box-shadow: 0 2px 0 #bdc3c7; }
-        .hand { position: absolute; top: 5px; right: 5px; font-size: 14px; opacity: 0.5; }
+        body { 
+            background: var(--bg); 
+            font-family: 'Tajawal', sans-serif; 
+            margin: 0; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* الهيدر - متوافق مع الجوال والكمبيوتر */
+        .game-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px 20px; 
+            background: rgba(0,0,0,0.4); 
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .score-pill { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            padding: 5px 15px; 
+            border-radius: 50px; 
+            font-weight: 800;
+        }
+        .bg-blue { background: var(--blue); border: 2px solid #5da9dd; }
+        .bg-red { background: var(--red); border: 2px solid #e2584d; }
+
+        /* منطقة اللعب - التمرير الذكي */
+        .game-area { 
+            flex: 1; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 15px;
+        }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 8px; 
+            width: 100%; 
+            max-width: 900px; /* للكمبيوتر */
+        }
+
+        /* الكروت - حجم مرن */
+        .card { 
+            background: var(--card); 
+            border-radius: 8px; 
+            aspect-ratio: 4 / 3; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            color: #2c3e50; 
+            font-weight: 800; 
+            font-size: clamp(10px, 2.5vw, 18px); /* خط يصغر ويكبر حسب الشاشة */
+            cursor: pointer; 
+            position: relative; 
+            box-shadow: 0 4px 0 #bdc3c7; 
+            transition: transform 0.1s;
+            border: 3px solid transparent;
+        }
+        .card:active { transform: translateY(2px); box-shadow: 0 2px 0 #bdc3c7; }
+        .hand-icon { position: absolute; top: 4px; right: 4px; font-size: 12px; opacity: 0.6; }
 
         /* حالات الكشف */
-        .rev-blue { background: var(--blue-team) !important; color: white !important; box-shadow: 0 5px 0 #3498db !important; }
-        .rev-red { background: var(--red-team) !important; color: white !important; box-shadow: 0 5px 0 #e74c3c !important; }
-        .rev-neutral { background: #bdc3c7 !important; color: #7f8c8d !important; box-shadow: 0 5px 0 #95a5a6 !important; }
-        .rev-assassin { background: #2c3e50 !important; color: white !important; box-shadow: 0 5px 0 #000 !important; }
+        .rev-blue { background: #5da9dd !important; color: white !important; box-shadow: 0 4px 0 var(--blue) !important; }
+        .rev-red { background: #e2584d !important; color: white !important; box-shadow: 0 4px 0 var(--red) !important; }
+        .rev-neutral { background: #d7ccc8 !important; color: #8d6e63 !important; box-shadow: 0 4px 0 #bcaaa4 !important; }
+        .rev-assassin { background: #1a1a1a !important; color: white !important; box-shadow: 0 4px 0 #000 !important; }
 
-        /* التحكم السفلي */
-        .controls { margin-top: auto; width: 100%; max-width: 600px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; text-align: center; }
-        .hint-bar { background: white; color: #2c3e50; padding: 10px; border-radius: 8px; font-size: 22px; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: center; gap: 20px; }
-        
-        .btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 800; cursor: pointer; font-family: inherit; }
-        .btn-gold { background: #f1c40f; color: #000; }
-        .hidden { display: none !important; }
+        /* منطقة التلميح والتحكم السفلي */
+        .footer-controls { 
+            background: #ecf0f1; 
+            color: #2c3e50; 
+            padding: 15px; 
+            border-radius: 25px 25px 0 0; 
+            text-align: center; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.4);
+        }
 
-        #auth { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .auth-box { background: white; color: #2c3e50; padding: 30px; border-radius: 15px; width: 320px; text-align: center; }
+        .hint-container { 
+            font-size: 22px; 
+            font-weight: 800; 
+            margin-bottom: 12px; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 15px;
+        }
+
+        .btn { padding: 12px 24px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; font-family: inherit; }
+        .btn-main { background: var(--gold); color: black; box-shadow: 0 4px 0 #d4ac0d; }
+
+        /* شاشة الدخول */
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-box { background: white; color: #2c3e50; padding: 30px; border-radius: 20px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; }
+
+        /* تحسينات للشاشات الصغيرة جداً */
+        @media (max-width: 400px) {
+            .grid { gap: 4px; }
+            .card { height: 60px; }
+            .game-header { padding: 5px 10px; }
+        }
     </style>
 </head>
 <body>
 
-    <div id="auth">
-        <div class="auth-box">
-            <h2 style="margin-top:0;">Codenames Pro</h2>
-            <input type="number" id="room" placeholder="رقم الغرفة" style="width:100%; padding:10px; margin:5px 0;">
-            <input type="text" id="user" placeholder="اسمك" style="width:100%; padding:10px; margin:5px 0;">
-            <select id="role" style="width:100%; padding:10px; margin:5px 0;">
-                <option value="field">ميداني (لاعب)</option>
-                <option value="spy">قائد (كاشف الألوان)</option>
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1 style="margin:0 0 20px 0; color:var(--bg)">CODENAMES PRO</h1>
+            <input type="number" id="room" placeholder="رقم الغرفة (مثلاً: 123)">
+            <input type="text" id="user" placeholder="اسمك المستعار">
+            <select id="role">
+                <option value="field">لاعب ميداني (Operative)</option>
+                <option value="spy">قائد (Spymaster)</option>
             </select>
-            <button class="btn btn-gold" style="width:100%; margin-top:10px;" onclick="join()">دخول</button>
+            <button class="btn btn-main" style="width:100%" onclick="join()">ابدأ اللعب الآن</button>
         </div>
     </div>
 
-    <div class="sidebar">
-        <div class="score-card blue-box">
-            <div class="score-val" id="b-left">9</div>
-            <div style="padding-top:10px;">الفريق الأزرق<br><small>كلمات متبقية</small></div>
-        </div>
-        <div class="score-card red-box">
-            <div class="score-val" id="r-left">8</div>
-            <div style="padding-top:10px;">الفريق الأحمر<br><small>كلمات متبقية</small></div>
-        </div>
-        <div style="flex:1; background:rgba(255,255,255,0.05); border-radius:10px; padding:10px; font-size:13px;" id="logs">
-            <b>سجل الجولة:</b><br>
+    <div class="game-header">
+        <div class="score-pill bg-blue"><small>BLUE</small><span id="b-left">9</span></div>
+        <div style="font-weight:800; font-size:14px;" id="room-display">...</div>
+        <div class="score-pill bg-red"><span id="r-left">8</span><small>RED</small></div>
+    </div>
+
+    <div class="game-area">
+        <div class="grid" id="main-grid"></div>
+        <div style="margin: 25px 0;">
+            <button class="btn" style="background:rgba(255,255,255,0.1); color:white; font-size:12px; border:1px solid rgba(255,255,255,0.2);" onclick="resetGame()">إعادة تعيين الجولة 🔄</button>
         </div>
     </div>
 
-    <div class="main-content">
-        <div class="grid" id="grid"></div>
-
-        <div class="controls">
-            <div class="hint-bar">
-                <span id="h-word">انتظر التلميح..</span>
-                <span id="h-num" style="background:#2c3e50; color:white; padding:0 10px; border-radius:5px;">0</span>
-            </div>
-            
-            <div id="spy-tools" class="hidden" style="margin-bottom:10px;">
-                <input type="text" id="inWord" placeholder="التلميح" style="padding:8px; border-radius:5px; border:none; width:120px;">
-                <input type="number" id="inNum" placeholder="#" style="padding:8px; border-radius:5px; border:none; width:50px;">
-                <button class="btn btn-gold" onclick="sendHint()">إرسال</button>
-            </div>
-
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button class="btn" style="background:#34495e; color:white;" onclick="startNewGame()">جولة جديدة 🔄</button>
-                <button class="btn" style="background:#e74c3c; color:white;" onclick="location.reload()">خروج</button>
-            </div>
+    <div class="footer-controls">
+        <div class="hint-container">
+            <span id="hint-w" style="color:var(--bg)">انتظر القائد..</span>
+            <span id="hint-n" style="background:var(--bg); color:white; padding:2px 12px; border-radius:8px;">0</span>
         </div>
+        
+        <div id="leader-tools" style="display:none; margin-bottom:15px; padding:10px; background:rgba(0,0,0,0.05); border-radius:15px;">
+            <input type="text" id="w-input" placeholder="كلمة السر" style="width:120px; margin:0 5px; padding:8px;">
+            <input type="number" id="n-input" placeholder="#" style="width:60px; margin:0 5px; padding:8px;">
+            <button class="btn btn-main" onclick="sendHint()">أرسل التلميح</button>
+        </div>
+        
+        <button class="btn" style="background:#bdc3c7; color:#2c3e50; width:100%; max-width:400px;" onclick="endTurn()">إنهاء التخمين (End Guessing)</button>
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBZfqpgix19pOGd_6xFMTV-p2YbrJmLwGo", authDomain: "mutakhafi-habba.firebaseapp.com", projectId: "mutakhafi-habba", databaseURL: "https://mutakhafi-habba-default-rtdb.europe-west1.firebasedatabase.app" };
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBZfqpgix19pOGd_6xFMTV-p2YbrJmLwGo", 
+            authDomain: "mutakhafi-habba.firebaseapp.com", 
+            projectId: "mutakhafi-habba", 
+            databaseURL: "https://mutakhafi-habba-default-rtdb.europe-west1.firebasedatabase.app" 
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let roomId, nickname, role;
-
-        // بنك الكلمات الضخم (220+ كلمة)
-        const bigBank = [
-            "شاورما", "كشتة", "عقال", "تيك توك", "مرسيدس", "جريش", "مطازيز", "بوليفارد", "شاص", "سناب", "قهوة", "مبتعث", "ضب", "فروة", "بخور", "عطور", "بريدة", "التحلية", "الثمامة", "درعية", "موسم", "طقطقة", "هبة", "ترند", "مشاهير",
-            "كبسة", "مثلوثة", "حنيني", "سمبوسة", "فيمتو", "تميس", "مطبق", "معصوب", "مندي", "كنافة", "لقيمات", "ببسي", "شاهي", "كرك", "بيتزا", "برجر", "عصير", "حمضيات", "نيسان", "تويوتا", "لكزس", "جمس", "هايلوكس", "دباب", "سيكل", 
-            "قطار", "طيارة", "سفينة", "يخت", "غواصة", "مرور", "ساهر", "بنزين", "كفر", "مكينة", "قير", "فرامل", "مفتاح", "شنطة", "ساعة", "نظارة", "قلم", "كتاب", "دفتر", "مكتب", "سرير", "كنبة", "سجادة", "مكيف", "ثلاجة", "غسالة",
-            "فرن", "مروحة", "باب", "شباك", "مراية", "منشفة", "بحر", "مطر", "شمس", "قمر", "نجوم", "جبل", "وادي", "نخلة", "صحراء", "بركة", "حديقة", "سوق", "مستشفى", "مدرسة", "جامعة", "مطار", "فندق", "مطعم", "كافيه", "صيدلية",
-            "كورة", "ملعب", "حكم", "هدف", "تسلل", "نادي", "مدرب", "كأس", "ميدالية", "جمهور", "سباحة", "حديد", "بادل", "تنس", "تزلج", "وقت", "حلم", "خيال", "صوت", "ضوء", "سر", "لغز", "خطر", "نصر", "هزيمة", "تحدي", "قوة", "ذكاء", 
-            "ذاكرة", "صدفة", "رحلة", "هدوء", "إزعاج", "فرح", "حزن", "الرياض", "جدة", "مكة", "الدمام", "أبها", "تبوك", "حائل", "نيوم", "العلا", "الخبر", "الجوف", "جازان", "نجران", "سكاكا", "الباحة", "القنفذة", "ينبع", "الجبيل",
-            "آيفون", "سماعة", "شاحن", "تويتر", "يوتيوب", "تيك توك", "كود", "هكر", "برمجة", "تطبيق", "موقع", "بث", "لايك", "فولو", "إكسبلور", "سيرفر", "قناة", "قروب", "بلك", "منشن", "خاص", "عام", "رابط", "ملف", "صورة", "مقطع",
-            "بلاك بيري", "نوكيا", "بايستيشن", "إكس بوكس", "نينتندو", "قيمر", "نوب", "احتراف", "ستريم", "سكن", "مود", "ماب", "تحديث", "صيانة", "بطارية", "كهرباء", "نار", "ثلج", "برد", "حر", "غبار", "عاصفة", "زلزال", "بركان", "غابة"
-        ];
+        let rId, uName, uRole;
+        const bank = ["شاورما", "كشتة", "عقال", "تيك توك", "مرسيدس", "جريش", "مطازيز", "بوليفارد", "شاص", "سناب", "قهوة", "مبتعث", "ضب", "فروة", "بخور", "عطور", "بريدة", "التحلية", "الثمامة", "درعية", "موسم", "طقطقة", "هبة", "ترند", "مشاهير", "كبسة", "مثلوثة", "حنيني", "سمبوسة", "فيمتو", "تميس", "مطبق", "معصوب", "مندي", "كنافة", "لقيمات", "ببسي", "شاهي", "كرك", "بيتزا", "برجر", "عصير", "حمضيات", "نيسان", "تويوتا", "لكزس", "جمس", "هايلوكس", "دباب", "سيكل", "قطار", "طيارة", "سفينة", "يخت", "غواصة", "مرور", "ساهر", "بنزين", "كفر", "مكينة", "قير", "فرامل", "مفتاح", "شنطة", "ساعة", "نظارة", "قلم", "كتاب", "دفتر", "مكتب", "سرير", "كنبة", "سجادة", "مكيف", "ثلاجة", "غسالة", "فرن", "مروحة", "باب", "شباك", "مراية", "منشفة", "بحر", "مطر", "شمس", "قمر", "نجوم", "جبل", "وادي", "نخلة", "صحراء", "بركة", "حديقة", "سوق", "مستشفى", "مدرسة", "جامعة", "مطار", "فندق", "مطعم", "كافيه", "صيدلية", "كورة", "ملعب", "حكم", "هدف", "تسلل", "نادي", "مدرب", "كأس", "ميدالية", "جمهور", "سباحة", "حديد", "بادل", "تنس", "تزلج", "وقت", "حلم", "خيال", "صوت", "ضوء", "سر", "لغز", "خطر", "نصر", "هزيمة", "تحدي", "قوة", "ذكاء", "ذاكرة", "صدفة", "رحلة", "هدوء", "إزعاج", "فرح", "حزن"];
 
         function join() {
-            roomId = document.getElementById('room').value;
-            nickname = document.getElementById('user').value;
-            role = document.getElementById('role').value;
-            if(!roomId || !nickname) return;
-            document.getElementById('auth').classList.add('hidden');
-            if(role === 'spy') document.getElementById('spy-tools').classList.remove('hidden');
+            rId = document.getElementById('room').value;
+            uName = document.getElementById('user').value;
+            uRole = document.getElementById('role').value;
+            if(!rId || !uName) return alert("فضلاً دخل بياناتك");
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('room-display').innerText = "ROOM: " + rId;
+            if(uRole === 'spy') document.getElementById('leader-tools').style.display = 'block';
             sync();
         }
 
         function sync() {
-            db.ref(`pro_game/${roomId}`).on('value', snap => {
+            db.ref(`universal_v1/${rId}`).on('value', snap => {
                 const data = snap.val(); if(!data) return;
-                document.getElementById('b-left').innerText = data.blueScore;
-                document.getElementById('r-left').innerText = data.redScore;
-                document.getElementById('h-word').innerText = data.hintW || "بانتظار التلميح..";
-                document.getElementById('h-num').innerText = data.hintN || "0";
+                document.getElementById('b-left').innerText = data.bS;
+                document.getElementById('r-left').innerText = data.rS;
+                document.getElementById('hint-w').innerText = data.hW || "بانتظار التلميح";
+                document.getElementById('hint-n').innerText = data.hN || "0";
 
-                const grid = document.getElementById('grid');
+                const grid = document.getElementById('main-grid');
                 grid.innerHTML = '';
                 data.cards.forEach((c, i) => {
                     const div = document.createElement('div');
-                    div.className = 'word-card';
-                    div.innerHTML = `<span class="hand">☝️</span>${c.w}`;
+                    div.className = 'card';
+                    div.innerHTML = `<span class="hand-icon">☝️</span>${c.w}`;
                     if(c.rev) div.classList.add(`rev-${c.t}`);
-                    else if(role === 'spy') div.style.border = `4px solid var(--${c.t}-team)`;
+                    else if(uRole === 'spy') div.style.border = `3px solid var(--${c.t})`;
                     
-                    div.onclick = () => { if(role === 'field' && !c.rev) reveal(i, c); };
+                    div.onclick = () => { if(uRole === 'field' && !c.rev) revealCard(i, c); };
                     grid.appendChild(div);
                 });
             });
         }
 
-        function reveal(i, c) {
+        function revealCard(i, c) {
             const up = {};
-            up[`pro_game/${roomId}/cards/${i}/rev`] = true;
-            if(c.t === 'blue') up[`pro_game/${roomId}/blueScore`] = firebase.database.ServerValue.increment(-1);
-            if(c.t === 'red') up[`pro_game/${roomId}/redScore`] = firebase.database.ServerValue.increment(-1);
+            up[`universal_v1/${rId}/cards/${i}/rev`] = true;
+            if(c.t === 'blue') up[`universal_v1/${rId}/bS`] = firebase.database.ServerValue.increment(-1);
+            if(c.t === 'red') up[`universal_v1/${rId}/rS`] = firebase.database.ServerValue.increment(-1);
             db.ref().update(up);
         }
 
         function sendHint() {
-            const w = document.getElementById('inWord').value;
-            const n = document.getElementById('inNum').value;
-            if(w && n) {
-                db.ref(`pro_game/${roomId}`).update({ hintW: w, hintN: n });
-                document.getElementById('inWord').value = '';
-                document.getElementById('inNum').value = '';
-            }
+            const w = document.getElementById('w-input').value;
+            const n = document.getElementById('n-input').value;
+            if(w && n) db.ref(`universal_v1/${rId}`).update({ hW: w, hN: n });
         }
 
-        function startNewGame() {
-            let deck = [...bigBank].sort(() => 0.5 - Math.random()).slice(0, 25);
+        function resetGame() {
+            let deck = [...bank].sort(() => 0.5 - Math.random()).slice(0, 25);
             let types = ["blue","blue","blue","blue","blue","blue","blue","blue","blue", "red","red","red","red","red","red","red","red", "assassin", "neutral","neutral","neutral","neutral","neutral","neutral","neutral"].sort(() => 0.5 - Math.random());
-            db.ref(`pro_game/${roomId}`).set({
+            db.ref(`universal_v1/${rId}`).set({
                 cards: deck.map((w, i) => ({ w, t: types[i], rev: false })),
-                blueScore: 9, redScore: 8, hintW: 'انتظر التلميح', hintN: 0
+                bS: 9, rS: 8, hW: 'بانتظار التلميح', hN: 0
             });
         }
+        
+        function endTurn() { alert("انتهى دور التخمين! دور الفريق الآخر."); }
     </script>
 </body>
 </html>
