@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Codenames Pro - The Final Edition</title>
+    <title>Codenames Pro - Master Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
-        :root { --blue: #2980b9; --red: #c0392b; --bg: #34495e; --card: #f3e5ab; --gold: #f1c40f; }
+        :root { --blue: #2980b9; --red: #c0392b; --bg: #34495e; --card: #f3e5ab; --gold: #f1c40f; --black: #1a1a1a; }
         * { box-sizing: border-box; }
         body { background: var(--bg); font-family: 'Tajawal', sans-serif; margin: 0; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
@@ -19,16 +19,24 @@
         .list-blue { background: rgba(41, 128, 185, 0.3); border: 1px solid var(--blue); }
         .list-red { background: rgba(192, 57, 43, 0.3); border: 1px solid var(--red); }
         .score-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 0 10px; }
-        .score-pill { padding: 5px 15px; border-radius: 20px; font-weight: 800; font-size: 18px; }
+        .score-pill { padding: 5px 15px; border-radius: 20px; font-weight: 800; font-size: 18px; position: relative; }
+        .turn-indicator { position: absolute; top: -15px; right: 0; left: 0; text-align: center; font-size: 10px; color: var(--gold); display: none; }
+        .active-turn .turn-indicator { display: block; }
 
         .game-area { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; align-items: center; }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; max-width: 600px; }
-        .card { background: var(--card); border-radius: 8px; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; text-align: center; color: #2c3e50; font-weight: 800; font-size: clamp(10px, 3vw, 16px); cursor: pointer; position: relative; box-shadow: 0 3px 0 #bdc3c7; border: 2px solid transparent; transition: 0.1s; }
+        .card { background: var(--card); border-radius: 8px; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; text-align: center; color: #2c3e50; font-weight: 800; font-size: clamp(10px, 3vw, 16px); cursor: pointer; position: relative; box-shadow: 0 3px 0 #bdc3c7; border: 3px solid transparent; }
         
+        /* الكشف الاحترافي */
         .rev-blue { background: #5da9dd !important; color: white !important; box-shadow: 0 3px 0 var(--blue) !important; }
         .rev-red { background: #e2584d !important; color: white !important; box-shadow: 0 3px 0 var(--red) !important; }
         .rev-neutral { background: #d7ccc8 !important; color: #8d6e63 !important; box-shadow: 0 3px 0 #bcaaa4 !important; }
-        .rev-assassin { background: #1a1a1a !important; color: white !important; box-shadow: 0 3px 0 #000 !important; }
+        .rev-assassin { background: var(--black) !important; color: white !important; box-shadow: 0 3px 0 #000 !important; }
+        
+        /* علامات القائد */
+        .spy-border-blue { border: 3px solid var(--blue) !important; }
+        .spy-border-red { border: 3px solid var(--red) !important; }
+        .spy-border-assassin { border: 4px solid var(--black) !important; background: #95a5a6 !important; }
 
         .footer { background: #f8f9fa; color: #2c3e50; padding: 15px; border-radius: 20px 20px 0 0; text-align: center; box-shadow: 0 -5px 15px rgba(0,0,0,0.3); }
         .hint-box { font-size: 20px; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: center; gap: 10px; }
@@ -37,7 +45,7 @@
 
         #login { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .login-card { background: white; color: #2c3e50; padding: 25px; border-radius: 20px; width: 100%; max-width: 350px; text-align: center; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #ddd; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -66,9 +74,15 @@
             <div class="team-list list-red" id="red-players">الأحمر: ..</div>
         </div>
         <div class="score-row">
-            <div class="score-pill" style="background:var(--blue)" id="b-score">9</div>
+            <div class="score-pill" id="b-pill" style="background:var(--blue)">
+                <span class="turn-indicator">دوره الآن ▼</span>
+                <span id="b-score">9</span>
+            </div>
             <div style="font-size:12px; opacity:0.8;" id="room-tag"></div>
-            <div class="score-pill" style="background:var(--red)" id="r-score">8</div>
+            <div class="score-pill" id="r-pill" style="background:var(--red)">
+                <span class="turn-indicator">دوره الآن ▼</span>
+                <span id="r-score">8</span>
+            </div>
         </div>
     </div>
 
@@ -84,9 +98,12 @@
         </div>
         
         <div id="spy-tools" class="hidden" style="margin-bottom:10px;">
-            <input type="text" id="in-w" placeholder="التلميح" style="width:100px; padding:8px;">
-            <input type="number" id="in-n" placeholder="#" style="width:50px; padding:8px;">
-            <button class="btn btn-gold" onclick="sendHint()">إرسال</button>
+            <div id="turn-lock-msg" style="color: #e74c3c; font-size: 12px; margin-bottom: 5px; display: none;">ليست نوبتك للكتابة!</div>
+            <div id="hint-inputs">
+                <input type="text" id="in-w" placeholder="التلميح" style="width:100px; padding:8px;">
+                <input type="number" id="in-n" placeholder="#" style="width:50px; padding:8px;">
+                <button class="btn btn-gold" onclick="sendHint()">إرسال</button>
+            </div>
         </div>
 
         <button id="end-guess-btn" class="btn hidden" style="background:#e74c3c; color:white; width:100%;" onclick="endGuessing()">إنهاء التخمين</button>
@@ -113,12 +130,12 @@
             if(uRole === 'spy') document.getElementById('spy-tools').classList.remove('hidden');
             else document.getElementById('end-guess-btn').classList.remove('hidden');
 
-            db.ref(`final_v1/${rId}/players/${uName}`).set({ t: uTeam, r: uRole });
+            db.ref(`master_v1/${rId}/players/${uName}`).set({ t: uTeam, r: uRole });
             sync();
         }
 
         function sync() {
-            db.ref(`final_v1/${rId}/players`).on('value', snap => {
+            db.ref(`master_v1/${rId}/players`).on('value', snap => {
                 const players = snap.val() || {};
                 let bList = "الأزرق: ", rList = "الأحمر: ";
                 Object.keys(players).forEach(name => {
@@ -130,19 +147,36 @@
                 document.getElementById('red-players').innerText = rList.slice(0, -2);
             });
 
-            db.ref(`final_v1/${rId}/game`).on('value', snap => {
+            db.ref(`master_v1/${rId}/game`).on('value', snap => {
                 const data = snap.val(); if(!data) return;
                 
-                // منطق الخسارة أو الفوز
                 if(data.status === 'gameover') {
                     alert(data.msg);
-                    location.reload(); // العودة لصفحة البداية
+                    location.reload();
                     return;
+                }
+
+                // تحديث واجهة الأدوار
+                document.getElementById('b-pill').className = "score-pill" + (data.turn === 'blue' ? " active-turn" : "");
+                document.getElementById('r-pill').className = "score-pill" + (data.turn === 'red' ? " active-turn" : "");
+
+                // قفل المدخلات للقائد في غير دوره
+                if(uRole === 'spy') {
+                    const myTurn = (uTeam === data.turn);
+                    document.getElementById('hint-inputs').style.opacity = myTurn ? "1" : "0.3";
+                    document.getElementById('hint-inputs').style.pointerEvents = myTurn ? "all" : "none";
+                    document.getElementById('turn-lock-msg').style.display = myTurn ? "none" : "block";
+                }
+
+                // قفل زر إنهاء التخمين للميداني في غير دوره
+                if(uRole === 'field') {
+                    document.getElementById('end-guess-btn').style.opacity = (uTeam === data.turn) ? "1" : "0.3";
+                    document.getElementById('end-guess-btn').style.pointerEvents = (uTeam === data.turn) ? "all" : "none";
                 }
 
                 document.getElementById('b-score').innerText = data.bS;
                 document.getElementById('r-score').innerText = data.rS;
-                document.getElementById('h-w').innerText = data.hW || "انتظر التلميح";
+                document.getElementById('h-w').innerText = data.hW || "بانتظار القائد..";
                 document.getElementById('h-n').innerText = data.hN || "0";
 
                 const grid = document.getElementById('grid');
@@ -151,48 +185,46 @@
                     const d = document.createElement('div');
                     d.className = 'card';
                     d.innerText = c.w;
-                    if(c.rev) d.classList.add(`rev-${c.t}`);
-                    else if(uRole === 'spy') d.style.border = `3px solid var(--${c.t})`;
-                    d.onclick = () => { if(uRole === 'field' && !c.rev) reveal(i, c, data); };
+                    
+                    if(c.rev) {
+                        d.classList.add(`rev-${c.t}`);
+                    } else if(uRole === 'spy') {
+                        // كشف كل الألوان للقائد بما في ذلك المجرم (الأسود)
+                        if(c.t === 'assassin') d.classList.add('spy-border-assassin');
+                        else d.classList.add(`spy-border-${c.t}`);
+                    }
+                    
+                    d.onclick = () => { if(uRole === 'field' && !c.rev && uTeam === data.turn) reveal(i, c, data); };
                     grid.appendChild(d);
                 });
             });
         }
 
         function reveal(i, c, data) {
-            // 1. الكلمة السوداء = خسارة فورية
             if(c.t === 'assassin') {
-                db.ref(`final_v1/${rId}/game`).update({ 
-                    status: 'gameover', 
-                    msg: "للأسف! اخترتوا الكلمة السوداء. خسر فريقكم!" 
-                });
+                db.ref(`master_v1/${rId}/game`).update({ status: 'gameover', msg: "خسارة! اخترتوا الكلمة السوداء." });
                 return;
             }
 
             const up = {};
-            up[`final_v1/${rId}/game/cards/${i}/rev`] = true;
+            up[`master_v1/${rId}/game/cards/${i}/rev`] = true;
             
-            let newBS = data.bS;
-            let newRS = data.rS;
+            let newBS = data.bS, newRS = data.rS;
+            if(c.t === 'blue') newBS--;
+            if(c.t === 'red') newRS--;
 
-            if(c.t === 'blue') {
-                newBS--;
-                up[`final_v1/${rId}/game/bS`] = newBS;
-            }
-            if(c.t === 'red') {
-                newRS--;
-                up[`final_v1/${rId}/game/rS`] = newRS;
-            }
-
-            // 2. انتهاء الكلمات = فوز
-            if(newBS === 0) {
-                up[`final_v1/${rId}/game/status`] = 'gameover';
-                up[`final_v1/${rId}/game/msg`] = "ألف مبروك! الفريق الأزرق فاز بالجولة!";
-            } else if(newRS === 0) {
-                up[`final_v1/${rId}/game/status`] = 'gameover';
-                up[`final_v1/${rId}/game/msg`] = "ألف مبروك! الفريق الأحمر فاز بالجولة!";
+            // إذا أخطأ الفريق في اللون، ينتهي دوره آلياً
+            if(c.t !== uTeam) {
+                up[`master_v1/${rId}/game/turn`] = (uTeam === 'blue' ? 'red' : 'blue');
+                up[`master_v1/${rId}/game/hW`] = 'انتهى الدور بالخطأ!';
+                up[`master_v1/${rId}/game/hN`] = 0;
             }
 
+            if(newBS === 0) { up[`master_v1/${rId}/game/status`] = 'gameover'; up[`master_v1/${rId}/game/msg`] = "فوز مستحق للفريق الأزرق!"; }
+            else if(newRS === 0) { up[`master_v1/${rId}/game/status`] = 'gameover'; up[`master_v1/${rId}/game/msg`] = "فوز مستحق للفريق الأحمر!"; }
+
+            up[`master_v1/${rId}/game/bS`] = newBS;
+            up[`master_v1/${rId}/game/rS`] = newRS;
             db.ref().update(up);
         }
 
@@ -200,23 +232,27 @@
             const w = document.getElementById('in-w').value;
             const n = document.getElementById('in-n').value;
             if(w && n) {
-                db.ref(`final_v1/${rId}/game`).update({ hW: w, hN: n });
+                db.ref(`master_v1/${rId}/game`).update({ hW: w, hN: n });
                 document.getElementById('in-w').value = '';
                 document.getElementById('in-n').value = '';
             }
         }
 
         function endGuessing() {
-            db.ref(`final_v1/${rId}/game`).update({ hW: 'انتهى التخمين.. دور القائد الثاني', hN: 0 });
-            alert("تم إنهاء التخمين.");
+            const nextTurn = (uTeam === 'blue' ? 'red' : 'blue');
+            db.ref(`master_v1/${rId}/game`).update({ 
+                turn: nextTurn,
+                hW: 'بانتظار القائد الآخر..', 
+                hN: 0 
+            });
         }
 
         function resetGame() {
             let deck = [...bank].sort(() => 0.5 - Math.random()).slice(0, 25);
             let types = ["blue","blue","blue","blue","blue","blue","blue","blue","blue", "red","red","red","red","red","red","red","red", "assassin", "neutral","neutral","neutral","neutral","neutral","neutral","neutral"].sort(() => 0.5 - Math.random());
-            db.ref(`final_v1/${rId}/game`).set({
+            db.ref(`master_v1/${rId}/game`).set({
                 cards: deck.map((w, i) => ({ w, t: types[i], rev: false })),
-                bS: 9, rS: 8, hW: 'بانتظار التلميح', hN: 0, status: 'playing'
+                bS: 9, rS: 8, hW: 'بانتظار التلميح', hN: 0, status: 'playing', turn: 'blue'
             });
         }
     </script>
