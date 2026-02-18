@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Codenames Pro - Field Control</title>
+    <title>Codenames Pro - The Final Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -45,7 +45,7 @@
 
     <div id="login">
         <div class="login-card">
-            <h2 style="margin:0 0 20px 0;">Codenames Pro</h2>
+            <h2 style="margin:0 0 20px 0;">CODENAMES PRO</h2>
             <input type="number" id="room" placeholder="رقم الغرفة">
             <input type="text" id="user" placeholder="اسمك">
             <select id="team-choice">
@@ -56,14 +56,14 @@
                 <option value="field">لاعب ميداني (Operative)</option>
                 <option value="spy">قائد (Spymaster)</option>
             </select>
-            <button class="btn btn-gold" style="width:100%" onclick="join()">دخول</button>
+            <button class="btn btn-gold" style="width:100%" onclick="join()">ابدأ اللعب</button>
         </div>
     </div>
 
     <div class="header">
         <div class="teams-container">
-            <div class="team-list list-blue" id="blue-players">الأزرق: جارِ التحميل..</div>
-            <div class="team-list list-red" id="red-players">الأحمر: جارِ التحميل..</div>
+            <div class="team-list list-blue" id="blue-players">الأزرق: ..</div>
+            <div class="team-list list-red" id="red-players">الأحمر: ..</div>
         </div>
         <div class="score-row">
             <div class="score-pill" style="background:var(--blue)" id="b-score">9</div>
@@ -79,17 +79,17 @@
 
     <div class="footer">
         <div class="hint-box">
-            <span id="h-w">بانتظار التلميح..</span>
+            <span id="h-w">انتظر التلميح..</span>
             <span id="h-n" style="background:#2c3e50; color:white; padding:0 10px; border-radius:5px;">0</span>
         </div>
         
         <div id="spy-tools" class="hidden" style="margin-bottom:10px;">
             <input type="text" id="in-w" placeholder="التلميح" style="width:100px; padding:8px;">
             <input type="number" id="in-n" placeholder="#" style="width:50px; padding:8px;">
-            <button class="btn btn-gold" onclick="sendHint()">إرسال التلميح</button>
+            <button class="btn btn-gold" onclick="sendHint()">إرسال</button>
         </div>
 
-        <button id="end-guess-btn" class="btn hidden" style="background:#e74c3c; color:white; width:100%;" onclick="endGuessing()">إنهاء التخمين (Pass Turn)</button>
+        <button id="end-guess-btn" class="btn hidden" style="background:#e74c3c; color:white; width:100%;" onclick="endGuessing()">إنهاء التخمين</button>
     </div>
 
     <script>
@@ -110,37 +110,34 @@
             document.getElementById('login').style.display = 'none';
             document.getElementById('room-tag').innerText = "غرفة: " + rId;
 
-            // إظهار الأدوار المناسبة
-            if(uRole === 'spy') {
-                document.getElementById('spy-tools').classList.remove('hidden');
-            } else {
-                document.getElementById('end-guess-btn').classList.remove('hidden');
-            }
+            if(uRole === 'spy') document.getElementById('spy-tools').classList.remove('hidden');
+            else document.getElementById('end-guess-btn').classList.remove('hidden');
 
-            db.ref(`teams_v4/${rId}/players/${uName}`).set({ t: uTeam, r: uRole });
+            db.ref(`final_v1/${rId}/players/${uName}`).set({ t: uTeam, r: uRole });
             sync();
         }
 
         function sync() {
-            db.ref(`teams_v4/${rId}/players`).on('value', snap => {
+            db.ref(`final_v1/${rId}/players`).on('value', snap => {
                 const players = snap.val() || {};
                 let bList = "الأزرق: ", rList = "الأحمر: ";
                 Object.keys(players).forEach(name => {
                     const p = players[name];
-                    if(p.t === 'blue') bList += name + (p.r === 'spy' ? " (قائد)" : "") + ", ";
-                    else rList += name + (p.r === 'spy' ? " (قائد)" : "") + ", ";
+                    if(p.t === 'blue') bList += name + (p.r === 'spy' ? " (ق)" : "") + ", ";
+                    else rList += name + (p.r === 'spy' ? " (ق)" : "") + ", ";
                 });
                 document.getElementById('blue-players').innerText = bList.slice(0, -2);
                 document.getElementById('red-players').innerText = rList.slice(0, -2);
             });
 
-            db.ref(`teams_v4/${rId}/game`).on('value', snap => {
+            db.ref(`final_v1/${rId}/game`).on('value', snap => {
                 const data = snap.val(); if(!data) return;
                 
-                // تنبيه بانتهاء الدور
-                if(data.lastAction === 'end') {
-                    // يمكنك إضافة صوت هنا أو تنبيه بسيط
-                    console.log("انتهى الدور!");
+                // منطق الخسارة أو الفوز
+                if(data.status === 'gameover') {
+                    alert(data.msg);
+                    location.reload(); // العودة لصفحة البداية
+                    return;
                 }
 
                 document.getElementById('b-score').innerText = data.bS;
@@ -156,17 +153,46 @@
                     d.innerText = c.w;
                     if(c.rev) d.classList.add(`rev-${c.t}`);
                     else if(uRole === 'spy') d.style.border = `3px solid var(--${c.t})`;
-                    d.onclick = () => { if(uRole === 'field' && !c.rev) reveal(i, c); };
+                    d.onclick = () => { if(uRole === 'field' && !c.rev) reveal(i, c, data); };
                     grid.appendChild(d);
                 });
             });
         }
 
-        function reveal(i, c) {
+        function reveal(i, c, data) {
+            // 1. الكلمة السوداء = خسارة فورية
+            if(c.t === 'assassin') {
+                db.ref(`final_v1/${rId}/game`).update({ 
+                    status: 'gameover', 
+                    msg: "للأسف! اخترتوا الكلمة السوداء. خسر فريقكم!" 
+                });
+                return;
+            }
+
             const up = {};
-            up[`teams_v4/${rId}/game/cards/${i}/rev`] = true;
-            if(c.t === 'blue') up[`teams_v4/${rId}/game/bS`] = firebase.database.ServerValue.increment(-1);
-            if(c.t === 'red') up[`teams_v4/${rId}/game/rS`] = firebase.database.ServerValue.increment(-1);
+            up[`final_v1/${rId}/game/cards/${i}/rev`] = true;
+            
+            let newBS = data.bS;
+            let newRS = data.rS;
+
+            if(c.t === 'blue') {
+                newBS--;
+                up[`final_v1/${rId}/game/bS`] = newBS;
+            }
+            if(c.t === 'red') {
+                newRS--;
+                up[`final_v1/${rId}/game/rS`] = newRS;
+            }
+
+            // 2. انتهاء الكلمات = فوز
+            if(newBS === 0) {
+                up[`final_v1/${rId}/game/status`] = 'gameover';
+                up[`final_v1/${rId}/game/msg`] = "ألف مبروك! الفريق الأزرق فاز بالجولة!";
+            } else if(newRS === 0) {
+                up[`final_v1/${rId}/game/status`] = 'gameover';
+                up[`final_v1/${rId}/game/msg`] = "ألف مبروك! الفريق الأحمر فاز بالجولة!";
+            }
+
             db.ref().update(up);
         }
 
@@ -174,27 +200,23 @@
             const w = document.getElementById('in-w').value;
             const n = document.getElementById('in-n').value;
             if(w && n) {
-                db.ref(`teams_v4/${rId}/game`).update({ hW: w, hN: n, lastAction: 'hint' });
+                db.ref(`final_v1/${rId}/game`).update({ hW: w, hN: n });
                 document.getElementById('in-w').value = '';
                 document.getElementById('in-n').value = '';
             }
         }
 
         function endGuessing() {
-            db.ref(`teams_v4/${rId}/game`).update({ 
-                hW: 'بانتظار القائد الآخر..', 
-                hN: 0, 
-                lastAction: 'end' 
-            });
-            alert("تم إنهاء التخمين! انتقل الدور للفريق الثاني.");
+            db.ref(`final_v1/${rId}/game`).update({ hW: 'انتهى التخمين.. دور القائد الثاني', hN: 0 });
+            alert("تم إنهاء التخمين.");
         }
 
         function resetGame() {
             let deck = [...bank].sort(() => 0.5 - Math.random()).slice(0, 25);
             let types = ["blue","blue","blue","blue","blue","blue","blue","blue","blue", "red","red","red","red","red","red","red","red", "assassin", "neutral","neutral","neutral","neutral","neutral","neutral","neutral"].sort(() => 0.5 - Math.random());
-            db.ref(`teams_v4/${rId}/game`).set({
+            db.ref(`final_v1/${rId}/game`).set({
                 cards: deck.map((w, i) => ({ w, t: types[i], rev: false })),
-                bS: 9, rS: 8, hW: 'بانتظار التلميح', hN: 0, lastAction: 'start'
+                bS: 9, rS: 8, hW: 'بانتظار التلميح', hN: 0, status: 'playing'
             });
         }
     </script>
