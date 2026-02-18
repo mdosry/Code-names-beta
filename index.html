@@ -3,243 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Codenames Pro | النسخة الشاملة</title>
+    <title>Codenames Teams Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
         :root { --blue: #2980b9; --red: #c0392b; --bg: #34495e; --card: #f3e5ab; --gold: #f1c40f; }
+        * { box-sizing: border-box; }
+        body { background: var(--bg); font-family: 'Tajawal', sans-serif; margin: 0; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* الهيدر وقائمة الأفرقة */
+        .header { background: rgba(0,0,0,0.4); padding: 10px; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .teams-container { display: flex; justify-content: space-around; gap: 10px; }
+        .team-list { flex: 1; padding: 5px 10px; border-radius: 10px; font-size: 11px; min-height: 40px; }
+        .list-blue { background: rgba(41, 128, 185, 0.3); border: 1px solid var(--blue); }
+        .list-red { background: rgba(192, 57, 43, 0.3); border: 1px solid var(--red); }
+        .score-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 0 10px; }
+        .score-pill { padding: 5px 15px; border-radius: 20px; font-weight: 800; font-size: 18px; }
+
+        /* منطقة اللعب */
+        .game-area { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; max-width: 600px; }
+        .card { background: var(--card); border-radius: 8px; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; text-align: center; color: #2c3e50; font-weight: 800; font-size: clamp(10px, 3vw, 16px); cursor: pointer; position: relative; box-shadow: 0 3px 0 #bdc3c7; border: 2px solid transparent; transition: 0.1s; }
+        .card:active { transform: translateY(2px); }
         
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            background: var(--bg); 
-            font-family: 'Tajawal', sans-serif; 
-            margin: 0; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            overflow: hidden; 
-        }
+        /* الألوان عند الكشف */
+        .rev-blue { background: #5da9dd !important; color: white !important; box-shadow: 0 3px 0 var(--blue) !important; }
+        .rev-red { background: #e2584d !important; color: white !important; box-shadow: 0 3px 0 var(--red) !important; }
+        .rev-neutral { background: #d7ccc8 !important; color: #8d6e63 !important; box-shadow: 0 3px 0 #bcaaa4 !important; }
+        .rev-assassin { background: #1a1a1a !important; color: white !important; box-shadow: 0 3px 0 #000 !important; }
 
-        /* الهيدر - متوافق مع الجوال والكمبيوتر */
-        .game-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 10px 20px; 
-            background: rgba(0,0,0,0.4); 
-            border-bottom: 2px solid rgba(255,255,255,0.1);
-        }
-
-        .score-pill { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            padding: 5px 15px; 
-            border-radius: 50px; 
-            font-weight: 800;
-        }
-        .bg-blue { background: var(--blue); border: 2px solid #5da9dd; }
-        .bg-red { background: var(--red); border: 2px solid #e2584d; }
-
-        /* منطقة اللعب - التمرير الذكي */
-        .game-area { 
-            flex: 1; 
-            overflow-y: auto; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 15px;
-        }
-
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 8px; 
-            width: 100%; 
-            max-width: 900px; /* للكمبيوتر */
-        }
-
-        /* الكروت - حجم مرن */
-        .card { 
-            background: var(--card); 
-            border-radius: 8px; 
-            aspect-ratio: 4 / 3; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            text-align: center; 
-            color: #2c3e50; 
-            font-weight: 800; 
-            font-size: clamp(10px, 2.5vw, 18px); /* خط يصغر ويكبر حسب الشاشة */
-            cursor: pointer; 
-            position: relative; 
-            box-shadow: 0 4px 0 #bdc3c7; 
-            transition: transform 0.1s;
-            border: 3px solid transparent;
-        }
-        .card:active { transform: translateY(2px); box-shadow: 0 2px 0 #bdc3c7; }
-        .hand-icon { position: absolute; top: 4px; right: 4px; font-size: 12px; opacity: 0.6; }
-
-        /* حالات الكشف */
-        .rev-blue { background: #5da9dd !important; color: white !important; box-shadow: 0 4px 0 var(--blue) !important; }
-        .rev-red { background: #e2584d !important; color: white !important; box-shadow: 0 4px 0 var(--red) !important; }
-        .rev-neutral { background: #d7ccc8 !important; color: #8d6e63 !important; box-shadow: 0 4px 0 #bcaaa4 !important; }
-        .rev-assassin { background: #1a1a1a !important; color: white !important; box-shadow: 0 4px 0 #000 !important; }
-
-        /* منطقة التلميح والتحكم السفلي */
-        .footer-controls { 
-            background: #ecf0f1; 
-            color: #2c3e50; 
-            padding: 15px; 
-            border-radius: 25px 25px 0 0; 
-            text-align: center; 
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.4);
-        }
-
-        .hint-container { 
-            font-size: 22px; 
-            font-weight: 800; 
-            margin-bottom: 12px; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            gap: 15px;
-        }
-
-        .btn { padding: 12px 24px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; font-family: inherit; }
-        .btn-main { background: var(--gold); color: black; box-shadow: 0 4px 0 #d4ac0d; }
+        /* التلميح والتحكم */
+        .footer { background: #f8f9fa; color: #2c3e50; padding: 15px; border-radius: 20px 20px 0 0; text-align: center; box-shadow: 0 -5px 15px rgba(0,0,0,0.3); }
+        .hint-box { font-size: 20px; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: center; gap: 10px; }
+        .btn { padding: 10px 20px; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; font-family: inherit; }
+        .btn-gold { background: var(--gold); color: black; }
 
         /* شاشة الدخول */
-        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-box { background: white; color: #2c3e50; padding: 30px; border-radius: 20px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; }
-
-        /* تحسينات للشاشات الصغيرة جداً */
-        @media (max-width: 400px) {
-            .grid { gap: 4px; }
-            .card { height: 60px; }
-            .game-header { padding: 5px 10px; }
-        }
+        #login { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: white; color: #2c3e50; padding: 25px; border-radius: 20px; width: 100%; max-width: 350px; text-align: center; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay">
-        <div class="login-box">
-            <h1 style="margin:0 0 20px 0; color:var(--bg)">CODENAMES PRO</h1>
-            <input type="number" id="room" placeholder="رقم الغرفة (مثلاً: 123)">
-            <input type="text" id="user" placeholder="اسمك المستعار">
-            <select id="role">
-                <option value="field">لاعب ميداني (Operative)</option>
-                <option value="spy">قائد (Spymaster)</option>
+    <div id="login">
+        <div class="login-card">
+            <h2 style="margin:0 0 20px 0;">Codenames Pro</h2>
+            <input type="number" id="room" placeholder="رقم الغرفة">
+            <input type="text" id="user" placeholder="اسمك">
+            <select id="team-choice">
+                <option value="blue">الفريق الأزرق 🔵</option>
+                <option value="red">الفريق الأحمر 🔴</option>
             </select>
-            <button class="btn btn-main" style="width:100%" onclick="join()">ابدأ اللعب الآن</button>
+            <select id="role">
+                <option value="field">لاعب ميداني</option>
+                <option value="spy">قائد (كاشف)</option>
+            </select>
+            <button class="btn btn-gold" style="width:100%" onclick="join()">دخول</button>
         </div>
     </div>
 
-    <div class="game-header">
-        <div class="score-pill bg-blue"><small>BLUE</small><span id="b-left">9</span></div>
-        <div style="font-weight:800; font-size:14px;" id="room-display">...</div>
-        <div class="score-pill bg-red"><span id="r-left">8</span><small>RED</small></div>
+    <div class="header">
+        <div class="teams-container">
+            <div class="team-list list-blue" id="blue-players">الأزرق: جارِ التحميل..</div>
+            <div class="team-list list-red" id="red-players">الأحمر: جارِ التحميل..</div>
+        </div>
+        <div class="score-row">
+            <div class="score-pill" style="background:var(--blue)" id="b-score">9</div>
+            <div style="font-size:12px; opacity:0.8;" id="room-tag"></div>
+            <div class="score-pill" style="background:var(--red)" id="r-score">8</div>
+        </div>
     </div>
 
     <div class="game-area">
-        <div class="grid" id="main-grid"></div>
-        <div style="margin: 25px 0;">
-            <button class="btn" style="background:rgba(255,255,255,0.1); color:white; font-size:12px; border:1px solid rgba(255,255,255,0.2);" onclick="resetGame()">إعادة تعيين الجولة 🔄</button>
-        </div>
+        <div class="grid" id="grid"></div>
+        <button class="btn" style="background:rgba(255,255,255,0.1); color:white; margin:20px;" onclick="resetGame()">جولة جديدة 🔄</button>
     </div>
 
-    <div class="footer-controls">
-        <div class="hint-container">
-            <span id="hint-w" style="color:var(--bg)">انتظر القائد..</span>
-            <span id="hint-n" style="background:var(--bg); color:white; padding:2px 12px; border-radius:8px;">0</span>
+    <div class="footer">
+        <div class="hint-box">
+            <span id="h-w">انتظر التلميح..</span>
+            <span id="h-n" style="background:#2c3e50; color:white; padding:0 10px; border-radius:5px;">0</span>
         </div>
-        
-        <div id="leader-tools" style="display:none; margin-bottom:15px; padding:10px; background:rgba(0,0,0,0.05); border-radius:15px;">
-            <input type="text" id="w-input" placeholder="كلمة السر" style="width:120px; margin:0 5px; padding:8px;">
-            <input type="number" id="n-input" placeholder="#" style="width:60px; margin:0 5px; padding:8px;">
-            <button class="btn btn-main" onclick="sendHint()">أرسل التلميح</button>
+        <div id="spy-tools" style="display:none; margin-bottom:10px;">
+            <input type="text" id="in-w" placeholder="كلمة السر" style="width:100px; padding:8px;">
+            <input type="number" id="in-n" placeholder="#" style="width:50px; padding:8px;">
+            <button class="btn btn-gold" onclick="sendHint()">إرسال</button>
         </div>
-        
-        <button class="btn" style="background:#bdc3c7; color:#2c3e50; width:100%; max-width:400px;" onclick="endTurn()">إنهاء التخمين (End Guessing)</button>
+        <button class="btn" style="background:#bdc3c7; color:#2c3e50; width:100%;" onclick="alert('انتهى دور الفريق!')">إنهاء التخمين</button>
     </div>
 
     <script>
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBZfqpgix19pOGd_6xFMTV-p2YbrJmLwGo", 
-            authDomain: "mutakhafi-habba.firebaseapp.com", 
-            projectId: "mutakhafi-habba", 
-            databaseURL: "https://mutakhafi-habba-default-rtdb.europe-west1.firebasedatabase.app" 
-        };
+        const firebaseConfig = { apiKey: "AIzaSyBZfqpgix19pOGd_6xFMTV-p2YbrJmLwGo", authDomain: "mutakhafi-habba.firebaseapp.com", projectId: "mutakhafi-habba", databaseURL: "https://mutakhafi-habba-default-rtdb.europe-west1.firebasedatabase.app" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let rId, uName, uRole;
+        let rId, uName, uRole, uTeam;
         const bank = ["شاورما", "كشتة", "عقال", "تيك توك", "مرسيدس", "جريش", "مطازيز", "بوليفارد", "شاص", "سناب", "قهوة", "مبتعث", "ضب", "فروة", "بخور", "عطور", "بريدة", "التحلية", "الثمامة", "درعية", "موسم", "طقطقة", "هبة", "ترند", "مشاهير", "كبسة", "مثلوثة", "حنيني", "سمبوسة", "فيمتو", "تميس", "مطبق", "معصوب", "مندي", "كنافة", "لقيمات", "ببسي", "شاهي", "كرك", "بيتزا", "برجر", "عصير", "حمضيات", "نيسان", "تويوتا", "لكزس", "جمس", "هايلوكس", "دباب", "سيكل", "قطار", "طيارة", "سفينة", "يخت", "غواصة", "مرور", "ساهر", "بنزين", "كفر", "مكينة", "قير", "فرامل", "مفتاح", "شنطة", "ساعة", "نظارة", "قلم", "كتاب", "دفتر", "مكتب", "سرير", "كنبة", "سجادة", "مكيف", "ثلاجة", "غسالة", "فرن", "مروحة", "باب", "شباك", "مراية", "منشفة", "بحر", "مطر", "شمس", "قمر", "نجوم", "جبل", "وادي", "نخلة", "صحراء", "بركة", "حديقة", "سوق", "مستشفى", "مدرسة", "جامعة", "مطار", "فندق", "مطعم", "كافيه", "صيدلية", "كورة", "ملعب", "حكم", "هدف", "تسلل", "نادي", "مدرب", "كأس", "ميدالية", "جمهور", "سباحة", "حديد", "بادل", "تنس", "تزلج", "وقت", "حلم", "خيال", "صوت", "ضوء", "سر", "لغز", "خطر", "نصر", "هزيمة", "تحدي", "قوة", "ذكاء", "ذاكرة", "صدفة", "رحلة", "هدوء", "إزعاج", "فرح", "حزن"];
 
         function join() {
             rId = document.getElementById('room').value;
             uName = document.getElementById('user').value;
             uRole = document.getElementById('role').value;
-            if(!rId || !uName) return alert("فضلاً دخل بياناتك");
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('room-display').innerText = "ROOM: " + rId;
-            if(uRole === 'spy') document.getElementById('leader-tools').style.display = 'block';
+            uTeam = document.getElementById('team-choice').value;
+            if(!rId || !uName) return alert("دخل بياناتك");
+
+            document.getElementById('login').style.display = 'none';
+            document.getElementById('room-tag').innerText = "غرفة: " + rId;
+            if(uRole === 'spy') document.getElementById('spy-tools').style.display = 'block';
+
+            // تسجيل اللاعب في الأفرقة
+            db.ref(`teams_v3/${rId}/players/${uName}`).set({ t: uTeam, r: uRole });
             sync();
         }
 
         function sync() {
-            db.ref(`universal_v1/${rId}`).on('value', snap => {
-                const data = snap.val(); if(!data) return;
-                document.getElementById('b-left').innerText = data.bS;
-                document.getElementById('r-left').innerText = data.rS;
-                document.getElementById('hint-w').innerText = data.hW || "بانتظار التلميح";
-                document.getElementById('hint-n').innerText = data.hN || "0";
+            // مزامنة قائمة اللاعبين
+            db.ref(`teams_v3/${rId}/players`).on('value', snap => {
+                const players = snap.val() || {};
+                let bList = "الأزرق: ", rList = "الأحمر: ";
+                Object.keys(players).forEach(name => {
+                    const p = players[name];
+                    if(p.t === 'blue') bList += name + (p.r === 'spy' ? " (قائد) " : "") + ", ";
+                    else rList += name + (p.r === 'spy' ? " (قائد) " : "") + ", ";
+                });
+                document.getElementById('blue-players').innerText = bList.slice(0, -2);
+                document.getElementById('red-players').innerText = rList.slice(0, -2);
+            });
 
-                const grid = document.getElementById('main-grid');
+            // مزامنة حالة اللعبة
+            db.ref(`teams_v3/${rId}/game`).on('value', snap => {
+                const data = snap.val(); if(!data) return;
+                document.getElementById('b-score').innerText = data.bS;
+                document.getElementById('r-score').innerText = data.rS;
+                document.getElementById('h-w').innerText = data.hW || "انتظر التلميح";
+                document.getElementById('h-n').innerText = data.hN || "0";
+
+                const grid = document.getElementById('grid');
                 grid.innerHTML = '';
                 data.cards.forEach((c, i) => {
-                    const div = document.createElement('div');
-                    div.className = 'card';
-                    div.innerHTML = `<span class="hand-icon">☝️</span>${c.w}`;
-                    if(c.rev) div.classList.add(`rev-${c.t}`);
-                    else if(uRole === 'spy') div.style.border = `3px solid var(--${c.t})`;
-                    
-                    div.onclick = () => { if(uRole === 'field' && !c.rev) revealCard(i, c); };
-                    grid.appendChild(div);
+                    const d = document.createElement('div');
+                    d.className = 'card';
+                    d.innerText = c.w;
+                    if(c.rev) d.classList.add(`rev-${c.t}`);
+                    else if(uRole === 'spy') d.style.border = `3px solid var(--${c.t})`;
+                    d.onclick = () => { if(uRole === 'field' && !c.rev) reveal(i, c); };
+                    grid.appendChild(d);
                 });
             });
         }
 
-        function revealCard(i, c) {
+        function reveal(i, c) {
             const up = {};
-            up[`universal_v1/${rId}/cards/${i}/rev`] = true;
-            if(c.t === 'blue') up[`universal_v1/${rId}/bS`] = firebase.database.ServerValue.increment(-1);
-            if(c.t === 'red') up[`universal_v1/${rId}/rS`] = firebase.database.ServerValue.increment(-1);
+            up[`teams_v3/${rId}/game/cards/${i}/rev`] = true;
+            if(c.t === 'blue') up[`teams_v3/${rId}/game/bS`] = firebase.database.ServerValue.increment(-1);
+            if(c.t === 'red') up[`teams_v3/${rId}/game/rS`] = firebase.database.ServerValue.increment(-1);
             db.ref().update(up);
         }
 
         function sendHint() {
-            const w = document.getElementById('w-input').value;
-            const n = document.getElementById('n-input').value;
-            if(w && n) db.ref(`universal_v1/${rId}`).update({ hW: w, hN: n });
+            const w = document.getElementById('in-w').value;
+            const n = document.getElementById('in-n').value;
+            if(w && n) {
+                db.ref(`teams_v3/${rId}/game`).update({ hW: w, hN: n });
+                document.getElementById('in-w').value = '';
+                document.getElementById('in-n').value = '';
+            }
         }
 
         function resetGame() {
             let deck = [...bank].sort(() => 0.5 - Math.random()).slice(0, 25);
             let types = ["blue","blue","blue","blue","blue","blue","blue","blue","blue", "red","red","red","red","red","red","red","red", "assassin", "neutral","neutral","neutral","neutral","neutral","neutral","neutral"].sort(() => 0.5 - Math.random());
-            db.ref(`universal_v1/${rId}`).set({
+            db.ref(`teams_v3/${rId}/game`).set({
                 cards: deck.map((w, i) => ({ w, t: types[i], rev: false })),
                 bS: 9, rS: 8, hW: 'بانتظار التلميح', hN: 0
             });
         }
-        
-        function endTurn() { alert("انتهى دور التخمين! دور الفريق الآخر."); }
     </script>
 </body>
 </html>
